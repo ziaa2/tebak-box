@@ -3,60 +3,40 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#08090c">
-<title>TebakBox • Multiplayer</title>
+<title>TebakBox</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
-<div class="ambient a"></div><div class="ambient b"></div>
-<header class="top"><div class="logo">TEBAK<span>BOX</span></div><div id="net" class="status">● READY</div></header>
-<main>
-<section id="home" class="page active">
-  <div class="hero">
-    <div class="eyebrow">ONLINE MULTIPLAYER</div>
-    <h1>Tebak gambar.<br><span>Buka box.</span></h1>
-    <p>5 level. 6 box. Host mengontrol reveal. Penebak tinggal melihat dan menebak.</p>
-    <div class="home-actions">
-      <button id="createBtn" class="btn primary">Buat Game <b>→</b></button>
-      <button id="joinBtn" class="btn ghost">Gabung Game</button>
-    </div>
-  </div>
-</section>
+<div id="app">
+  <header class="top"><div class="brand">TEBAK<span>BOX</span></div><div id="net" class="pill">● OFFLINE</div></header>
 
-<section id="setup" class="page">
-  <div class="head"><button class="back" data-back>‹</button><div><small>HOST</small><h2>Siapkan game</h2></div></div>
-  <label class="field">Nama game<input id="title" placeholder="Contoh: Sehari Bersama Makanan" maxlength="50"></label>
-  <div id="editors"></div>
-  <button id="hostBtn" class="btn primary full">Buat Room & Invite <b>→</b></button>
-</section>
+  <main id="home" class="page">
+    <section class="hero">
+      <div class="eyebrow">PRIVATE GAME LIBRARY</div>
+      <h1>Siap bikin<br><span>tebak-tebakan?</span></h1>
+      <p>Simpan game di HP, lalu mainkan kapan saja.</p>
+      <button id="newGame" class="primary big">＋ Buat Game</button>
+    </section>
+    <section class="library">
+      <div class="sectionHead"><h2>Library Game</h2><button id="importBtn" class="ghost">Import</button></div>
+      <input id="importFile" type="file" accept=".tebakbox,application/json" hidden>
+      <div id="games"></div>
+    </section>
+  </main>
 
-<section id="join" class="page">
-  <div class="head"><button class="back" data-back>‹</button><div><small>PLAYER</small><h2>Gabung game</h2></div></div>
-  <label class="field">Nama kamu<input id="name" placeholder="Masukkan nama" maxlength="24"></label>
-  <label class="field">Room ID<input id="room" placeholder="Contoh: tbx-8f3k2a"></label>
-  <button id="joinGameBtn" class="btn primary full">Masuk Room <b>→</b></button>
-</section>
+  <main id="editor" class="page hidden">
+    <div class="bar"><button id="backHome" class="ghost">← Kembali</button><button id="saveNow" class="ghost">✓ Tersimpan</button></div>
+    <div class="editorHead"><div class="eyebrow">EDITOR GAME</div><h1 id="editorTitle">Buat Game</h1><p>Auto-save aktif. Isi semua level lalu simpan.</p></div>
+    <label>Nama Game<input id="gameName" placeholder="Contoh: Tebak Makanan"></label>
+    <div id="levels"></div>
+    <div class="actions"><button id="saveGame" class="primary big">💾 Simpan Game</button></div>
+  </main>
 
-<section id="host" class="page">
-  <div class="head"><div><small>HOST • <span id="hRoom"></span></small><h2 id="hTitle">Game</h2></div><button id="copy" class="btn tiny">Copy Link</button></div>
-  <div id="hLevels" class="levels"></div>
-  <div id="hQuestion" class="question"></div>
-  <div id="hBoxes" class="boxes"></div>
-  <div class="hostbar"><button id="all" class="btn ghost">Buka Semua</button><button id="next" class="btn primary">Lanjut Level</button></div>
-  <div id="players" class="info">Menunggu penebak...</div>
-</section>
-
-<section id="player" class="page">
-  <div class="head"><div><small>PLAYER • <span id="pLv"></span></small><h2 id="pTitle">Game</h2></div><span id="pName" class="namechip"></span></div>
-  <div id="pLevels" class="levels"></div>
-  <div id="pQuestion" class="question"></div>
-  <div id="pBoxes" class="boxes"></div>
-  <div id="pInfo" class="info">Tunggu host membuka box.</div>
-</section>
-
-<section id="wait" class="page center"><div class="loader"></div><small>ROOM</small><h2>Menunggu host…</h2><p id="waitText">Menghubungkan ke game.</p></section>
-</main>
+  <main id="host" class="page hidden"></main>
+  <main id="player" class="page hidden"></main>
+</div>
 <div id="toast"></div>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="app.js"></script>
-</body></html>
+</body>
+</html>

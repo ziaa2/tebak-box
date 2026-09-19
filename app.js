@@ -1,71 +1,46 @@
+const DB="tebakbox-db-v3", STORE="games";
+let editingId=null, currentGame=null, peer=null, conn=null, hostSide=false, roomId=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const S={role:null,peer:null,conn:null,room:"",title:"",levels:[],current:0,opened:[],player:""};
-const params=new URLSearchParams(location.search), invite=params.get("room");
-const topics=["Sarapan","Camilan","Makan Siang","Makan Sore","Makan Malam"];
-const questions=["Mana yang cocok untuk sarapan?","Mana yang cocok untuk camilan?","Mana yang cocok untuk makan siang?","Mana yang cocok untuk makan sore?","Mana yang cocok untuk makan malam?"];
-function show(id){$$(".page").forEach(x=>x.classList.remove("active"));$(id).classList.add("active")}
-function toast(t){let x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1700)}
-function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function defaults(){return topics.map((topic,i)=>({topic,q:questions[i],imgs:[]}))}
-function progress(sel,n){$(sel).innerHTML=S.levels.map((_,i)=>`<i class="level ${i<n?"done":""} ${i===n?"active":""}"></i>`).join("")}
-function compress(file){return new Promise((res,rej)=>{let r=new FileReader(),im=new Image();r.onload=()=>im.src=r.result;r.onerror=rej;im.onload=()=>{let m=850,z=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*z;c.height=im.height*z;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.76))};r.readAsDataURL(file)})}
-function editors(){
-  $("#editors").innerHTML=S.levels.map((l,i)=>`<div class="editor">
-  <div class="editorhead"><div><div class="lv">LEVEL ${i+1}</div><div class="topic">${esc(l.topic)}</div></div></div>
-  <label class="field">Topik<input data-t="${i}" value="${esc(l.topic)}"></label>
-  <label class="field">Pertanyaan<input data-q="${i}" value="${esc(l.q)}"></label>
-  <div class="uploadgrid">${Array.from({length:6},(_,j)=>`<label class="upload">${l.imgs[j]?`<img src="${l.imgs[j]}">`:`<span>BOX ${j+1}<br>Tambah gambar</span>`}<input type="file" accept="image/*" data-f="${i}-${j}"></label>`).join("")}</div>
-  </div>`).join("");
-  $$("[data-t]").forEach(x=>x.oninput=()=>S.levels[+x.dataset.t].topic=x.value);
-  $$("[data-q]").forEach(x=>x.oninput=()=>S.levels[+x.dataset.q].q=x.value);
-  $$("[data-f]").forEach(x=>x.onchange=async e=>{let[i,j]=x.dataset.f.split("-").map(Number),f=e.target.files[0];if(!f)return;S.levels[i].imgs[j]=await compress(f);editors()});
-}
-function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
-function box(i,img,open,host){
-  return `<div class="box ${open?"open":""}" ${host?`data-i="${i}"`:``}><div class="inner">
-  <div class="face backface">?<span class="num">BOX ${i+1}</span></div>
-  <div class="face front"><img src="${img}"><span class="num">BOX ${i+1}</span></div>
-  </div></div>`
-}
-function renderHost(){
- let l=S.levels[S.current];$("#hTitle").textContent=S.title;$("#hRoom").textContent=S.room;progress("#hLevels",S.current);
- $("#hQuestion").innerHTML=`<div class="qlabel">LEVEL ${S.current+1} • ${esc(l.topic)}</div><div class="qtext">${esc(l.q)}</div>`;
- $("#hBoxes").innerHTML=l.boxes.map((x,i)=>box(i,x,S.opened.includes(i),true)).join("");
- $$("#hBoxes .box").forEach(x=>x.onclick=()=>open(+x.dataset.i));
-}
-function renderPlayer(){
- let l=S.levels[S.current];$("#pTitle").textContent=S.title;$("#pLv").textContent=`LEVEL ${S.current+1}`;$("#pName").textContent=S.player;progress("#pLevels",S.current);
- $("#pQuestion").innerHTML=`<div class="qlabel">LEVEL ${S.current+1} • ${esc(l.topic)}</div><div class="qtext">${esc(l.q)}</div>`;
- $("#pBoxes").innerHTML=l.boxes.map((x,i)=>box(i,x,S.opened.includes(i),false)).join("");
- $("#pInfo").textContent=S.opened.length===6?(S.current===4?"🏆 Semua level selesai.":"Menunggu host lanjut ke level berikutnya."):"Tunggu host membuka box.";
-}
-function send(m){if(S.conn?.open)S.conn.send(m)}
-function open(i,b=true){if(S.opened.includes(i))return;S.opened.push(i);renderHost();if(b)send({type:"open",level:S.current,index:i})}
-function all(){S.levels[S.current].boxes.forEach((_,i)=>open(i))}
-function next(){if(S.opened.length<6){toast("Buka semua box dulu.");return}if(S.current===4){send({type:"done"});toast("Game selesai.");return}S.current++;S.opened=[];renderHost();send({type:"level",level:S.current})}
-function connect(id){return new Promise((res,rej)=>{let p=new Peer(id);p.on("open",()=>res(p));p.on("error",rej)})}
-function makeId(){return"tbx-"+Math.random().toString(36).slice(2,9)}
-function hostMsg(m){if(m.type==="hello"){S.player=m.name;$("#players").textContent=`Penebak: ${m.name}`;send({type:"state",title:S.title,levels:S.levels.map(l=>({topic:l.topic,q:l.q,boxes:l.boxes})),current:S.current,opened:S.opened})}}
-async function startHost(){
- for(let i=0;i<5;i++){if(!S.levels[i].q.trim()||S.levels[i].imgs.length!==6||S.levels[i].imgs.some(x=>!x)){toast(`LV ${i+1} belum lengkap.`);return}}
- S.title=$("#title").value.trim()||"TebakBox";S.levels=S.levels.map(l=>({...l,boxes:shuffle(l.imgs)}));S.role="host";S.room=makeId();
- try{S.peer=await connect(S.room)}catch(e){toast("Gagal membuat room.");return}
- $("#net").textContent="● HOST ONLINE";S.peer.on("connection",c=>{if(S.conn){c.on("open",()=>c.send({type:"busy"}));return}S.conn=c;c.on("open",()=>{$("#players").textContent="Penebak terhubung.";send({type:"state",title:S.title,levels:S.levels.map(l=>({topic:l.topic,q:l.q,boxes:l.boxes})),current:S.current,opened:S.opened})});c.on("data",hostMsg);c.on("close",()=>{$("#players").textContent="Penebak terputus.";S.conn=null})});
- let u=location.origin+location.pathname+"?room="+S.room;history.replaceState({},"","?room="+S.room);$("#copy").onclick=()=>navigator.clipboard.writeText(u).then(()=>toast("Invite link disalin"));renderHost();show("#host")
-}
-function playerMsg(m){
- if(m.type==="busy"){toast("Room sudah dipakai.");return}
- if(m.type==="state"){S.title=m.title;S.levels=m.levels;S.current=m.current;S.opened=m.opened||[];renderPlayer();show("#player")}
- if(m.type==="open"&&m.level===S.current){S.opened.push(m.index);renderPlayer()}
- if(m.type==="level"){S.current=m.level;S.opened=[];renderPlayer()}
- if(m.type==="done"){$("#pInfo").textContent="🏆 GAME SELESAI";toast("Game selesai!")}
-}
-async function join(){
- S.player=$("#name").value.trim();S.room=$("#room").value.trim();if(!S.player||!S.room){toast("Isi nama dan Room ID.");return}
- show("#wait");$("#waitText").textContent="Mencari host...";S.role="player";S.peer=await connect(makeId());S.conn=S.peer.connect(S.room,{reliable:true});S.conn.on("open",()=>{send({type:"hello",name:S.player});$("#net").textContent="● CONNECTED"});S.conn.on("data",playerMsg);S.conn.on("close",()=>toast("Koneksi terputus."))
-}
-$("#createBtn").onclick=()=>{S.levels=defaults();editors();show("#setup")};
-$("#joinBtn").onclick=()=>{$("#room").value=invite||"";show("#join")};
-$("#hostBtn").onclick=startHost;$("#joinGameBtn").onclick=join;$("#all").onclick=all;$("#next").onclick=next;
-$$("[data-back]").forEach(x=>x.onclick=()=>show("#home"));
-if(invite){$("#room").value=invite;show("#join")}
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("show");setTimeout(()=>e.classList.remove("show"),1800)}
+function show(id){["home","editor","host","player"].forEach(x=>$("#"+x).classList.toggle("hidden",x!==id))}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random()}
+function db(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE,{keyPath:"id"});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function allGames(){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>res(r.result.sort((a,b)=>b.updated-a.updated));r.onerror=()=>rej(r.error)})}
+async function putGame(g){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(STORE,"readwrite").objectStore(STORE).put(g);r.onsuccess=()=>res(g);r.onerror=()=>rej(r.error)})}
+async function getGame(id){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(STORE).objectStore(STORE).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function delGame(id){let d=await db();return new Promise((res,rej)=>{let r=d.transaction(STORE,"readwrite").objectStore(STORE).delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function blankGame(){return{id:uid(),name:"Game Baru",updated:Date.now(),levels:Array.from({length:5},(_,i)=>({topic:"",question:"",images:Array(6).fill("")}))}}
+function renderLibrary(){allGames().then(gs=>{let el=$("#games");if(!gs.length){el.innerHTML='<div class="empty">Belum ada game.<br>Buat game pertama kamu.</div>';return}el.innerHTML=gs.map(g=>`<div class="card"><div class="cardTop"><div><h3>${esc(g.name)}</h3><div class="muted">5 level • 30 gambar • ${new Date(g.updated).toLocaleDateString("id-ID")}</div></div></div><div class="cardBtns"><button class="primary" onclick="startSaved('${g.id}')">▶ Main</button><button class="ghost" onclick="editSaved('${g.id}')">✏ Edit</button><button class="ghost" onclick="dupSaved('${g.id}')">⧉ Duplikat</button><button class="danger" onclick="removeSaved('${g.id}')">Hapus</button><button class="ghost" onclick="exportSaved('${g.id}')">Export</button></div></div>`).join("")})}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+async function openEditor(g){editingId=g.id;$("#gameName").value=g.name;$("#editorTitle").textContent=g.name==="Game Baru"?"Buat Game":"Edit Game";let lv=$("#levels");lv.innerHTML=g.levels.map((l,i)=>`<section class="level"><div class="levelHead"><b>LV ${i+1}</b><span class="muted">6 gambar</span></div><div class="levelBody"><label>Topik<input data-topic="${i}" value="${esc(l.topic)}" placeholder="Contoh: Sarapan"></label><label>Pertanyaan<textarea class="question" data-question="${i}" placeholder="Pertanyaan untuk penebak...">${esc(l.question)}</textarea></label><div class="grid">${l.images.map((im,j)=>`<label class="slot"><span class="num">BOX ${j+1}</span>${im?`<img src="${im}">`:"<div class='face'>＋</div>"}<input type="file" accept="image/*" data-img="${i}-${j}"></label>`).join("")}</div></div></section>`).join("");$$("[data-img]").forEach(inp=>inp.addEventListener("change",async e=>{let [i,j]=e.target.dataset.img.split("-").map(Number);let f=e.target.files[0];if(f){g.levels[i].images[j]=await resize(f);g.updated=Date.now();await putGame(readEditor(g));openEditor(await getGame(g.id));toast("Gambar tersimpan");}}));$$("[data-topic], [data-question]").forEach(e=>e.addEventListener("input",()=>{readEditor(g);scheduleSave(g)}));show("editor")}
+function readEditor(g){g.name=$("#gameName").value.trim()||"Game Baru";$$("[data-topic]").forEach(e=>g.levels[+e.dataset.topic].topic=e.value);$$("[data-question]").forEach(e=>g.levels[+e.dataset.question].question=e.value);g.updated=Date.now();return g}
+let saveTimer;function scheduleSave(g){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{await putGame(g);$("#saveNow").textContent="✓ Auto-saved"},500)}
+async function resize(file){return new Promise(res=>{let im=new Image(),r=new FileReader();r.onload=()=>{im.onload=()=>{let max=1200,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.78))};im.src=r.result};r.readAsDataURL(file)})}
+$("#newGame").onclick=async()=>{let g=blankGame();await putGame(g);openEditor(g)}
+$("#backHome").onclick=()=>{renderLibrary();show("home")}
+$("#saveGame").onclick=async()=>{let g=readEditor(await getGame(editingId));await putGame(g);toast("Game disimpan");renderLibrary();show("home")}
+$("#gameName").oninput=()=>{if(editingId)getGame(editingId).then(scheduleSave)}
+async function editSaved(id){openEditor(await getGame(id))}
+async function startSaved(id){let g=await getGame(id);startHost(g)}
+async function dupSaved(id){let g=await getGame(id);g.id=uid();g.name=g.name+" Copy";g.updated=Date.now();await putGame(g);renderLibrary();toast("Game diduplikat")}
+async function removeSaved(id){if(confirm("Hapus game ini?")){await delGame(id);renderLibrary();toast("Game dihapus")}}
+async function exportSaved(id){let g=await getGame(id),b=new Blob([JSON.stringify(g)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=g.name.replace(/[^\w-]+/g,"_")+".tebakbox";a.click();URL.revokeObjectURL(a.href)}
+$("#importBtn").onclick=()=>$("#importFile").click();$("#importFile").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{let g=JSON.parse(await f.text());g.id=uid();g.updated=Date.now();await putGame(g);renderLibrary();toast("Game diimport")}catch{toast("File tidak valid")}};
+function shuffle(a){a=[...a];for(let i=a.length-1;i;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function startHost(g){hostSide=true;currentGame=JSON.parse(JSON.stringify(g));currentGame.levels.forEach(l=>{l.boxes=shuffle(l.images.map((img,i)=>({id:i,img})))});roomId=null;renderHost();setupPeerHost()}
+function setupPeerHost(){peer=new Peer();$("#net").textContent="● CONNECTING";peer.on("open",id=>{roomId=id;$("#net").textContent="● ONLINE";renderHost()});peer.on("connection",c=>{if(conn){c.send({type:"busy"});c.close();return}conn=c;wireHost(c);c.on("open",()=>{c.send({type:"hello",gameName:currentGame.name,level:0});renderHost()})});peer.on("error",e=>{toast("Koneksi gagal");console.log(e)})}
+function wireHost(c){c.on("data",m=>{if(m.type==="ping")c.send({type:"pong"});if(m.type==="requestState")sendPublicState()})}
+function publicLevel(lv){return{topic:lv.topic,question:lv.question,boxes:lv.boxes.map(x=>({id:x.id}))}}
+function sendPublicState(){if(!conn)return;let l=currentGame.levels[currentGame.level];conn.send({type:"state",level:currentGame.level,topic:currentGame.levels[currentGame.level].topic,question:currentGame.levels[currentGame.level].question,boxes:publicLevel(currentGame.levels[currentGame.level]).boxes,opened:currentGame.levels[currentGame.level].boxes.map(x=>x.opened||false),done:currentGame.levels[currentGame.level].boxes.every(x=>x.opened)})}
+function renderHost(){show("host");let l=currentGame.levels[currentGame.level||0],idx=currentGame.level||0;$("#host").innerHTML=`<div class="bar"><button class="ghost" onclick="leaveRoom()">← Home</button><div class="pill">HOST • LV ${idx+1}/5</div></div><div class="gameWrap"><div class="eyebrow">${esc(l.topic||"TOPIK")}</div><h1 class="gameTitle">${esc(currentGame.name)}</h1><div class="questionBox"><b>${esc(l.question||"Belum ada pertanyaan")}</b></div><div class="boxes">${l.boxes.map((b,i)=>`<div class="box ${b.opened?"open":""}" onclick="reveal(${i})"><div class="boxInner"><div class="face front">${i+1}</div><div class="face back"><img src="${b.img}"></div></div></div>`).join("")}</div><div class="controls"><button class="primary" onclick="openAll()">Buka Semua</button>${l.boxes.every(b=>b.opened)?(idx<4?`<button class="ghost" onclick="nextLevel()">Lanjut Level ${idx+2}</button>`:`<button class="ghost" onclick="finishGame()">Selesai</button>`):""}</div><div class="status">${conn?"🟢 Penebak sudah terhubung":"🟡 Menunggu penebak..."}</div>${roomId?`<div class="invite">Link Penebak<br>${location.origin+location.pathname+"?room="+roomId}</div><button class="ghost" onclick="copyInvite()">Salin Link</button>`:""}</div>`}
+function reveal(i){let l=currentGame.levels[currentGame.level];if(l.boxes[i].opened)return;l.boxes[i].opened=true;renderHost();if(conn)conn.send({type:"reveal",index:i,img:l.boxes[i].img,level:currentGame.level})}
+function openAll(){let l=currentGame.levels[currentGame.level];l.boxes.forEach(b=>b.opened=true);renderHost();if(conn)conn.send({type:"revealAll",level:currentGame.level,imgs:l.boxes.map(b=>b.img)})}
+function nextLevel(){if(currentGame.level<4){currentGame.level++;renderHost();if(conn)conn.send({type:"next",level:currentGame.level,topic:currentGame.levels[currentGame.level].topic,question:currentGame.levels[currentGame.level].question,boxes:currentGame.levels[currentGame.level].boxes.map(b=>({id:b.id}))})}}
+function finishGame(){if(conn)conn.send({type:"finish"});$("#host").innerHTML='<div class="center"><div class="complete">🎉</div><h1>Game Selesai</h1><p class="muted">Semua 5 level sudah dibuka.</p><button class="primary" onclick="leaveRoom()">Kembali ke Library</button></div>'}
+function copyInvite(){navigator.clipboard.writeText(location.origin+location.pathname+"?room="+roomId);toast("Link disalin")}
+function leaveRoom(){try{conn?.close();peer?.destroy()}catch{}conn=null;peer=null;currentGame=null;renderLibrary();show("home")}
+function startPlayer(id){hostSide=false;show("player");$("#player").innerHTML='<div class="center"><div class="complete">🎮</div><h2>Masuk ke Game...</h2><p class="muted">Menghubungkan ke Host</p></div>';peer=new Peer();peer.on("open",()=>{conn=peer.connect(id);conn.on("open",()=>{conn.send({type:"requestState"})});wirePlayer(conn)});peer.on("error",()=>{$("#player").innerHTML='<div class="center"><h2>Room tidak ditemukan</h2><p class="muted">Pastikan Host masih membuka game.</p></div>'})}
+function wirePlayer(c){c.on("data",m=>{if(m.type==="busy"){$("#player").innerHTML='<div class="center"><h2>Room penuh</h2><p class="muted">Room ini sudah punya penebak.</p></div>';return}if(m.type==="state")renderPlayer(m);if(m.type==="reveal"){let el=document.querySelector(`[data-box="${m.index}"]`);if(el){el.classList.add("open");el.querySelector("img").src=m.img}}if(m.type==="revealAll")m.imgs.forEach((img,i)=>{let el=document.querySelector(`[data-box="${i}"]`);if(el){el.classList.add("open");el.querySelector("img").src=img}});if(m.type==="next")renderPlayer(m);if(m.type==="finish")$("#player").innerHTML='<div class="center"><div class="complete">🎉</div><h1>Selesai!</h1><p class="muted">Terima kasih sudah bermain.</p></div>'})}
+function renderPlayer(m){let boxes=m.boxes||Array.from({length:6},(_,i)=>({id:i}));$("#player").innerHTML=`<div class="gameWrap"><div class="bar"><div class="pill">PENEBak</div><div class="pill">LV ${(m.level||0)+1}/5</div></div><div class="eyebrow">${esc(m.topic||"TOPIK")}</div><h1 class="gameTitle">Tebak!</h1><div class="questionBox"><b>${esc(m.question||"Apa gambar ini?")}</b></div><div class="boxes">${boxes.map((b,i)=>`<div class="box" data-box="${i}"><div class="boxInner"><div class="face front">?</div><div class="face back"><img></div></div></div>`).join("")}</div><div class="playerNote">🎙️ Sebutkan tebakanmu. Host yang membuka box.</div></div>`}
+function maybeRoom(){let id=new URLSearchParams(location.search).get("room");if(id)startPlayer(id);else{renderLibrary();show("home")}}
+maybeRoom();
