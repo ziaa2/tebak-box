@@ -1,31 +1,29 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b0d0f">
-<meta name="description" content="TEBAK personal toolbox">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css">
-<title>TEBAK — Personal Toolbox</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d0f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+  <title>TEBAK Personal Toolbox</title>
 </head>
 <body>
-<div class="app">
-<header class="topbar">
-  <button class="brand" data-view="home"><span>TEBAK</span><small>TOOLBOX</small></button>
-  <div class="top-actions">
-    <button id="themeBtn" class="icon-btn" aria-label="Toggle theme">☼</button>
-  </div>
-</header>
-<main id="app"></main>
-<nav class="bottom-nav" aria-label="Main navigation">
-  <button data-view="home" class="nav active">⌂<span>Home</span></button>
-  <button data-view="tools" class="nav">⌘<span>Tools</span></button>
-  <button data-view="favorites" class="nav">★<span>Favorites</span></button>
-  <button data-view="history" class="nav">◷<span>History</span></button>
-</nav>
-<div id="toast" role="status"></div>
-</div>
-<script src="app.js"></script>
+  <header class="topbar">
+    <div><strong>TEBAK</strong><span>TOOLBOX</span></div>
+    <button id="themeBtn" class="icon-btn" aria-label="Ganti tema">☼</button>
+  </header>
+
+  <main id="app"></main>
+
+  <nav class="bottom-nav">
+    <a href="#home" data-nav="home">Home</a>
+    <a href="#tools" data-nav="tools">Tools</a>
+    <a href="#favorites" data-nav="favorites">Favorit</a>
+    <a href="#history" data-nav="history">Riwayat</a>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
 </body>
 </html>
