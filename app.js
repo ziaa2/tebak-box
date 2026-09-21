@@ -43,7 +43,12 @@ function labaTool(){
  </div>`
 }
 function home(){return `<div class="wrap"><div class="hero"><div class="eyebrow">Personal Toolbox</div><h1>TEBAK</h1><p>Tool sederhana buat kebutuhan harian.</p></div><div class="card"><h2>Catatan Laba</h2><p class="hero">Total saat ini: <strong>${rupiah(total())}</strong></p><a class="btn" href="#tool/laba">Buka Tool Laba</a></div></div>`}
-function tools(){return `<div class="wrap"><div class="hero"><div class="eyebrow">Tools</div><h1>Toolbox</h1><p>Tool yang sedang dibangun.</p></div><div class="tool-grid"><a class="tool-card" href="#tool/laba"><h3>💰 Catatan Laba</h3><p>Input cepat Rp2K, Rp3K, Rp5K, Rp10K atau manual.</p></a></div></div>`}
+// ===== TAMBAH TOOL DI SINI =====
+const TOOL_CATALOG = [
+ {id:"laba",icon:"💰",name:"Catatan Laba",desc:"Input cepat Rp2K, Rp3K, Rp5K, Rp10K atau manual.",href:"#tool/laba",tag:"Keuangan"},
+ // TAMBAHKAN TOOL BARU DI BAWAH BARIS INI
+];
+function tools(){return `<div class="wrap"><div class="hero"><div class="eyebrow">Toolbox</div><h1>Semua Tools</h1><p>Pilih tool yang mau dipakai.</p></div><div class="tool-grid">${TOOL_CATALOG.map(t=>`<a class="tool-card" href="${t.href}"><div class="tool-icon">${t.icon}</div><div class="tool-copy"><div class="tool-top"><h3>${t.name}</h3><span>${t.tag||"Tool"}</span></div><p>${t.desc}</p></div><div class="tool-arrow">›</div></a>`).join("")}</div></div>`}
 function history(){return `<div class="wrap"><div class="hero"><div class="eyebrow">Riwayat</div><h1>Riwayat Laba</h1><p>${profits.length} catatan • total ${rupiah(total())}</p></div><section class="card">${profits.length?profits.map(x=>`<div class="entry"><div><strong>+ ${rupiah(x.amount)}</strong><small>${new Date(x.time).toLocaleString("id-ID")}</small></div><button class="delete" data-delete="${x.id}">×</button></div>`).join(""):`<div class="empty">Belum ada riwayat.</div>`}</section></div>`}
 function render(){
  const hash=location.hash||"#home";
