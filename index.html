@@ -1,21 +1,31 @@
 <!doctype html>
 <html lang="id">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>4D Lab</title><link rel="stylesheet" href="style.css"></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d0f">
+<meta name="description" content="TEBAK personal toolbox">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+<title>TEBAK — Personal Toolbox</title>
+</head>
 <body>
-<header><b>4D<span>LAB</span></b><small>LOCAL • DARK</small></header>
-<main>
-<section class="hero"><i>GAME PATTERN ANALYZER</i><h1>History → pola →<br><em>10 kemungkinan.</em></h1><p>Masukkan hasil game aktual. Kandidat analisis selalu terpisah dari history.</p></section>
-
-<section class="panel">
-<h2>History Game <small id="count"></small></h2>
-<div id="hist"></div>
-<div class="input"><input id="n" inputmode="numeric" maxlength="4" placeholder="4 digit hasil game baru"><button id="add">＋ Tambah</button></div>
-<div class="buttons"><button id="analyze" class="secondary">📊 Analisis</button><button id="clear" class="danger">Hapus History</button></div>
-</section>
-
-<section class="panel"><h2>10 Kemungkinan Analisis</h2><small>Kandidat simulasi berdasarkan beberapa pola berbeda. Kandidat tidak dimasukkan ke history.</small><div id="candidates"></div></section>
-
-<section class="panel"><h2>Ringkasan Pola</h2><div id="stats" class="grid"></div><div id="patterns" class="grid2"></div></section>
-</main><div id="toast"></div><script src="app.js"></script>
-</body></html>
+<div class="app">
+<header class="topbar">
+  <button class="brand" data-view="home"><span>TEBAK</span><small>TOOLBOX</small></button>
+  <div class="top-actions">
+    <button id="themeBtn" class="icon-btn" aria-label="Toggle theme">☼</button>
+  </div>
+</header>
+<main id="app"></main>
+<nav class="bottom-nav" aria-label="Main navigation">
+  <button data-view="home" class="nav active">⌂<span>Home</span></button>
+  <button data-view="tools" class="nav">⌘<span>Tools</span></button>
+  <button data-view="favorites" class="nav">★<span>Favorites</span></button>
+  <button data-view="history" class="nav">◷<span>History</span></button>
+</nav>
+<div id="toast" role="status"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

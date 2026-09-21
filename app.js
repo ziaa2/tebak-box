@@ -1,56 +1,85 @@
-const KEY="4dlab-history-v3";
-const initial=["5749","3492","2010","2899","0065","2949","5415","1281","1536","0027"];
-let H=JSON.parse(localStorage.getItem(KEY)||"null");
-if(!Array.isArray(H)||!H.length){H=initial.map((n,i)=>({n,t:Date.now()-(9-i)*86400000}));save()}
+const TOOLS=[
+{id:"calc",name:"Calculator",cat:"Utility",icon:"⌗",desc:"Hitung cepat tanpa meninggalkan app.",keywords:"calculator math hitung"},
+{id:"json",name:"JSON Formatter",cat:"Developer",icon:"{}",desc:"Rapikan, validasi, dan minify JSON.",keywords:"json format pretty minify"},
+{id:"base64",name:"Base64",cat:"Text",icon:"64",desc:"Encode dan decode teks secara lokal.",keywords:"base64 encode decode"},
+{id:"time",name:"Timestamp",cat:"Utility",icon:"◷",desc:"Konversi Unix timestamp ke waktu lokal.",keywords:"timestamp unix time tanggal"},
+{id:"color",name:"Color Tools",cat:"Utility",icon:"◈",desc:"Preview warna dan ubah format HEX/RGB.",keywords:"color hex rgb warna"},
+{id:"pattern",name:"Game Pattern",cat:"Personal",icon:"4D",desc:"Analyzer 4D lama, sekarang jadi tool.",keywords:"game pattern 4d analyzer"}
+];
+
+const FAV="tebak-favorites-v1", HIST="tebak-history-v1";
+const state={favs:JSON.parse(localStorage.getItem(FAV)||"[]"),history:JSON.parse(localStorage.getItem(HIST)||"[]")};
 const $=s=>document.querySelector(s);
-function save(){localStorage.setItem(KEY,JSON.stringify(H))}
-function toast(t){let x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1700)}
-function freq(a){let f=Array(10).fill(0);a.forEach(x=>f[+x]++);return f}
-function topDigits(f){return f.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).map(x=>x[1])}
-function clamp(n){return ((n%10)+10)%10}
-function pad4(a){return a.map(x=>clamp(x)).join("")}
-function candidateSet(){
- const nums=H.map(x=>x.n), last=nums[nums.length-1], all=H.flatMap(x=>[...x.n].map(Number));
- const f=freq(all), hot=topDigits(f), cold=[...Array(10).keys()].sort((a,b)=>f[a]-f[b]);
- const pos=[0,1,2,3].map(p=>freq(nums.map(x=>+x[p])));
- const pHot=pos.map(x=>topDigits(x)), recent=nums.slice(-5);
- const avg=recent.map(x=>[...x].map(Number)).reduce((a,x)=>x.map((v,i)=>a[i]+v),[0,0,0,0]).map(v=>Math.round(v/recent.length));
- const prev=nums.length>1?nums[nums.length-2]:last;
- const diff=[...last].map((v,i)=>+v-(+prev[i]));
- const sets=[
-  ["Frekuensi digit",()=>pad4(pHot.map(a=>a[0]))],
-  ["Frekuensi alternatif",()=>pad4(pHot.map(a=>a[1]))],
-  ["Digit terendah",()=>pad4(pos.map((_,i)=>cold[i%cold.length]))],
-  ["Rata-rata 5 hasil",()=>pad4(avg)],
-  ["Tren +1",()=>pad4([...last].map(x=>+x+1))],
-  ["Tren -1",()=>pad4([...last].map(x=>+x-1))],
-  ["Cermin digit",()=>pad4([...last].map(x=>9-+x))],
-  ["Balik urutan",()=>[...last].reverse().join("")],
-  ["Hot global",()=>pad4([hot[0],hot[1],hot[2],hot[3]])],
-  ["Campuran pola",()=>pad4([pHot[0][0],pHot[1][1],hot[2],avg[3]])]
- ];
- let used=new Set(),out=[];
- for(const [label,fn] of sets){let n=fn();if(!used.has(n)){used.add(n);out.push({n,label})}}
- let seed=0;for(const c of H)for(const ch of c.n)seed=(seed*31+ +ch)%997;
- let i=0;while(out.length<10&&i<100){let a=out.length+seed+i*7;let n=pad4([hot[a%10],cold[(a+1)%10],pHot[2][(a>>1)%3],avg[(a>>2)%4]]);if(!used.has(n)){used.add(n);out.push({n,label:"Campuran statistik "+(out.length+1)})}i++}
- return out.slice(0,10);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function save(){localStorage.setItem(FAV,JSON.stringify(state.favs));localStorage.setItem(HIST,JSON.stringify(state.history))}
+function toast(t){const x=$("#toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1500)}
+function record(t){state.history.push({tool:t.name,t:Date.now()});state.history=state.history.slice(-50);save()}
+function card(t){return `<div class="tool-card" data-tool="${t.id}"><button class="fav ${state.favs.includes(t.id)?"on":""}" data-fav="${t.id}">${state.favs.includes(t.id)?"★":"☆"}</button><div class="tool-icon">${t.icon}</div><strong>${t.name}</strong><small>${t.desc}</small></div>`}
+function bindCards(){document.querySelectorAll("[data-tool]").forEach(x=>x.onclick=e=>{if(e.target.closest("[data-fav]"))return;openTool(x.dataset.tool)});document.querySelectorAll("[data-fav]").forEach(x=>x.onclick=e=>{e.stopPropagation();const id=x.dataset.fav;state.favs=state.favs.includes(id)?state.favs.filter(v=>v!==id):[...state.favs,id];save();render()})}
+function shell(title,kicker,body){return `<section class="hero"><div class="eyebrow">${kicker}</div><h1>${title}</h1>${body}</section>`}
+function home(){
+return shell("Tools that stay<br>out of your way.","PERSONAL TOOLBOX",`<p>Utility kecil untuk kerja harian. Cepat, lokal, dan dibuat buat dipakai sendiri.</p>
+<div class="search">⌕ <input id="search" placeholder="Search tools..."></div>
+<div class="section-head"><h2>Quick access</h2><small>${state.favs.length} favorites</small></div>
+<div class="grid">${(state.favs.length?TOOLS.filter(t=>state.favs.includes(t.id)):TOOLS.slice(0,4)).map(card).join("")}</div>
+<div class="section-head"><h2>All tools</h2></div>
+<div class="chips" id="chips"><button class="chip active" data-cat="All">All</button>${[...new Set(TOOLS.map(t=>t.cat))].map(c=>`<button class="chip" data-cat="${c}">${c}</button>`).join("")}</div>
+<div class="grid" id="toolgrid">${TOOLS.map(card).join("")}</div>`)}
+
+function toolBody(id){
+const b={
+calc:`<div class="field"><label>Expression</label><input id="calcIn" inputmode="decimal" placeholder="(12 + 8) * 3"></div><div class="actions"><button class="primary" id="calcRun">Calculate</button><button class="secondary" id="calcClear">Clear</button></div><div class="result" id="calcOut">Hasil akan muncul di sini.</div>`,
+json:`<div class="field"><label>JSON input</label><textarea id="jsonIn" placeholder='{"hello":"world"}'></textarea></div><div class="actions"><button class="primary" id="jsonFormat">Format</button><button class="secondary" id="jsonMin">Minify</button><button class="secondary" id="jsonCopy">Copy</button></div><div class="result" id="jsonOut"></div>`,
+base64:`<div class="field"><label>Text</label><textarea id="b64In" placeholder="Tulis teks di sini..."></textarea></div><div class="actions"><button class="primary" id="b64Enc">Encode</button><button class="secondary" id="b64Dec">Decode</button></div><div class="result" id="b64Out"></div>`,
+time:`<div class="field"><label>Unix timestamp (ms)</label><input id="timeIn" inputmode="numeric" placeholder="${Date.now()}"></div><div class="actions"><button class="primary" id="timeNow">Now</button><button class="secondary" id="timeConvert">Convert</button></div><div class="result" id="timeOut"></div>`,
+color:`<div class="field"><label>Color</label><input id="colorIn" value="#b8ff55"></div><div class="result" id="colorOut">Preview</div>`,
+pattern:`<div class="field"><label>4 digit history, satu per baris</label><textarea id="patIn" placeholder="5749\n3492\n2010"></textarea></div><div class="actions"><button class="primary" id="patRun">Analyze</button></div><div class="result" id="patOut"></div>`
+};return b[id]||""}
+
+function openTool(id){
+const t=TOOLS.find(x=>x.id===id);if(!t)return;
+record(t);location.hash="tool/"+id;
+$("#app").innerHTML=`<section class="panel"><div class="tool-head"><div><h1>${t.icon} ${t.name}</h1><p>${t.desc}</p></div><button class="back" data-view="home">← Back</button></div>${toolBody(id)}</section>`;
+bindTool(id)
 }
+
+function bindTool(id){
+if(id==="calc"){
+$("#calcRun").onclick=()=>{try{const v=$("#calcIn").value.replace(/[^0-9+*/().%\- ]/g,"");if(!v)throw 0;$("#calcOut").textContent=Function('"use strict";return ('+v+')')()}catch{$("#calcOut").textContent="Expression tidak valid."}};
+$("#calcClear").onclick=()=>{$("#calcIn").value="";$("#calcOut").textContent=""}}
+if(id==="json"){
+const parse=()=>{try{return JSON.parse($("#jsonIn").value)}catch(e){$("#jsonOut").textContent="JSON tidak valid: "+e.message;return null}};
+$("#jsonFormat").onclick=()=>{const x=parse();if(x!==null)$("#jsonOut").textContent=JSON.stringify(x,null,2)};
+$("#jsonMin").onclick=()=>{const x=parse();if(x!==null)$("#jsonOut").textContent=JSON.stringify(x)};
+$("#jsonCopy").onclick=()=>navigator.clipboard?.writeText($("#jsonOut").textContent).then(()=>toast("Copied"))}
+if(id==="base64"){
+$("#b64Enc").onclick=()=>{try{$("#b64Out").textContent=btoa(unescape(encodeURIComponent($("#b64In").value)))}catch{$("#b64Out").textContent="Encode gagal."}};
+$("#b64Dec").onclick=()=>{try{$("#b64Out").textContent=decodeURIComponent(escape(atob($("#b64In").value.trim())))}catch{$("#b64Out").textContent="Base64 tidak valid."}}}
+if(id==="time"){
+$("#timeNow").onclick=()=>{$("#timeIn").value=Date.now();$("#timeConvert").click()};
+$("#timeConvert").onclick=()=>{const d=new Date(Number($("#timeIn").value));$("#timeOut").textContent=Number.isNaN(d.getTime())?"Timestamp tidak valid.":d.toLocaleString("id-ID",{dateStyle:"full",timeStyle:"medium"})}}
+if(id==="color"){
+const render=()=>{const v=$("#colorIn").value.trim();$("#colorOut").style.background=v;$("#colorOut").style.color=v.toLowerCase()==="#ffffff"?"#000":"#fff";$("#colorOut").textContent=v};
+$("#colorIn").oninput=render;render()}
+if(id==="pattern"){
+$("#patRun").onclick=()=>{const a=$("#patIn").value.split(/\s+/).filter(x=>/^\d{4}$/.test(x));if(!a.length){$("#patOut").textContent="Masukkan minimal satu hasil 4 digit.";return}const f=Array(10).fill(0);a.join("").split("").forEach(x=>f[+x]++);const hot=f.map((v,i)=>[v,i]).sort((x,y)=>y[0]-x[0]).slice(0,4).map(x=>x[1]).join("");$("#patOut").textContent=`History: ${a.length}\nDigit teratas: ${hot}\nFrekuensi: ${f.map((v,i)=>i+":"+v).join("  ")}`}}
+}
+function historyView(){return shell("Your activity.","RECENT",`<div class="panel">${state.history.length?state.history.slice().reverse().map(x=>`<div class="history-item"><span>${esc(x.tool)}</span><small>${new Date(x.t).toLocaleString("id-ID")}</small></div>`).join(""):'<div class="empty">Belum ada aktivitas.</div>'}</div>`)}
 function render(){
- $("#count").textContent="("+H.length+")";
- $("#hist").innerHTML=H.map((x,i)=>'<div class="hist"><span><b>#'+(H.length-i)+'</b> <span class="num">'+x.n+'</span></span><span class="time">'+new Date(x.t).toLocaleDateString("id-ID")+'</span></div>').join("");
- analyze();
-}
-function analyze(){
- if(!H.length){$("#candidates").innerHTML='<div class="empty">History kosong.</div>';return}
- const cs=candidateSet();
- $("#candidates").innerHTML='<div class="candidates">'+cs.map((c,i)=>'<div class="candidate"><small>#'+(i+1)+'</small><div class="n">'+c.n+'</div><span class="tag">'+c.label+'</span></div>').join("")+'</div>';
- const all=H.flatMap(x=>[...x.n].map(Number)),f=freq(all),odd=all.filter(x=>x%2).length,hi=all.filter(x=>x>=5).length;
- $("#stats").innerHTML=[["History",H.length],["Ganjil / Genap",odd+" / "+(all.length-odd)],["Tinggi / Rendah",hi+" / "+(all.length-hi)],["Digit teratas",topDigits(f).slice(0,3).join(", ")]].map(x=>'<div class="stat"><small>'+x[0]+'</small><b>'+x[1]+'</b></div>').join("");
- const labels=["Ribuan","Ratusan","Puluhan","Satuan"];
- $("#patterns").innerHTML=labels.map((l,p)=>{let f=freq(H.map(x=>+x.n[p])),a=topDigits(f);return '<div class="card"><h3>'+l+'</h3><p>Teratas: <b>'+a.slice(0,4).join(", ")+'</b></p></div>'}).join("");
-}
-$("#add").onclick=()=>{let n=$("#n").value.trim();if(!/^\d{4}$/.test(n)){toast("Masukkan tepat 4 digit");return}H.push({n,t:Date.now()});save();$("#n").value="";render();toast("Hasil aktual ditambahkan")};
-$("#n").onkeydown=e=>{if(e.key==="Enter")$("#add").click()};
-$("#analyze").onclick=()=>{analyze();toast("10 kandidat dianalisis ulang")};
-$("#clear").onclick=()=>{if(confirm("Hapus semua history?")){H=[];save();render();toast("History dihapus")}};
-render();
+const h=location.hash.slice(1)||"home", parts=h.split("/"), view=parts[0],id=parts[1];
+document.querySelectorAll(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
+if(view==="tool"){openTool(id);return}
+if(view==="tools")$("#app").innerHTML=shell("Everything<br>in one place.","ALL TOOLS",`<div class="grid">${TOOLS.map(card).join("")}</div>`);
+else if(view==="favorites")$("#app").innerHTML=shell("Your shortcuts.","FAVORITES",`<div class="grid">${TOOLS.filter(t=>state.favs.includes(t.id)).map(card).join("")||'<div class="empty">Belum ada favorite.</div>'}</div>`);
+else if(view==="history")$("#app").innerHTML=historyView();
+else $("#app").innerHTML=home();
+bindCards();
+document.querySelectorAll("[data-view]").forEach(x=>x.onclick=()=>location.hash=x.dataset.view);
+if(view==="home"){
+const s=$("#search");s.oninput=()=>{const q=s.value.toLowerCase();$("#toolgrid").innerHTML=TOOLS.filter(t=>(t.name+" "+t.keywords).toLowerCase().includes(q)).map(card).join("");bindCards()};
+document.querySelectorAll("[data-cat]").forEach(x=>x.onclick=()=>{document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));x.classList.add("active");const c=x.dataset.cat;$("#toolgrid").innerHTML=TOOLS.filter(t=>c==="All"||t.cat===c).map(card).join("");bindCards()})
+}}
+$("#themeBtn").onclick=()=>{document.body.classList.toggle("light");localStorage.setItem("tebak-theme",document.body.classList.contains("light")?"light":"dark")};
+if(localStorage.getItem("tebak-theme")==="light")document.body.classList.add("light");
+window.addEventListener("hashchange",render);render();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
