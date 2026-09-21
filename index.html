@@ -1,1 +1,21 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>4D Lab</title><link rel="stylesheet" href="style.css"></head><body><header><b>4D<span>LAB</span></b><small>LOCAL • DARK</small></header><main><section class="hero"><i>HISTORICAL PATTERN ANALYZER</i><h1>Analisis angka,<br><em>tanpa menghapus history.</em></h1><p>Catat hasil aktual dan lihat pola statistiknya. Data tersimpan di perangkat.</p></section><section class="panel"><h2>Hasil aktual baru</h2><div class="input"><input id="n" inputmode="numeric" maxlength="4" placeholder="0000"><button id="add">＋ Simpan</button></div><small>Masukkan tepat 4 digit. Hasil aktual dipisahkan dari laporan analisis.</small></section><section class="panel"><h2>History Aktual <small id="count"></small></h2><div id="hist"></div><button id="clear" class="danger">Hapus Semua History</button></section><section class="panel"><h2>Analisis Statistik</h2><div id="stats" class="grid"></div><div id="pos" class="grid2"></div></section><section class="panel"><h2>10 Laporan Pola</h2><small>Deskriptif dari data aktual, bukan prediksi angka berikutnya.</small><div id="reports" class="grid2"></div></section></main><div id="toast"></div><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="id">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4D Lab</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><b>4D<span>LAB</span></b><small>LOCAL • DARK</small></header>
+<main>
+<section class="hero"><i>GAME PATTERN ANALYZER</i><h1>History → pola →<br><em>10 kemungkinan.</em></h1><p>Masukkan hasil game aktual. Kandidat analisis selalu terpisah dari history.</p></section>
+
+<section class="panel">
+<h2>History Game <small id="count"></small></h2>
+<div id="hist"></div>
+<div class="input"><input id="n" inputmode="numeric" maxlength="4" placeholder="4 digit hasil game baru"><button id="add">＋ Tambah</button></div>
+<div class="buttons"><button id="analyze" class="secondary">📊 Analisis</button><button id="clear" class="danger">Hapus History</button></div>
+</section>
+
+<section class="panel"><h2>10 Kemungkinan Analisis</h2><small>Kandidat simulasi berdasarkan beberapa pola berbeda. Kandidat tidak dimasukkan ke history.</small><div id="candidates"></div></section>
+
+<section class="panel"><h2>Ringkasan Pola</h2><div id="stats" class="grid"></div><div id="patterns" class="grid2"></div></section>
+</main><div id="toast"></div><script src="app.js"></script>
+</body></html>
