@@ -1,1 +1,22 @@
-{"name":"WarungKu - Kasir & Stok","short_name":"WarungKu","description":"Kasir, stok, belanja agen, konter dan laba.","start_url":"./","scope":"./","display":"standalone","display_override":["window-controls-overlay","standalone"],"orientation":"portrait","background_color":"#081012","theme_color":"#081012","prefer_related_applications":false,"icons":[{"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
+{
+  "id": "./",
+  "name": "WarungKu - Kasir & Stok",
+  "short_name": "WarungKu",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "description": "Kasir, stok, belanja agen, konter dan laba.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "background_color": "#081012",
+  "theme_color": "#081012",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"maskable"},
+    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
+}
